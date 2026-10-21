@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using NCommonUtility;
 
-namespace SampleMain
+namespace NSocketSample
 {
     public partial class MainForm : Form
     {

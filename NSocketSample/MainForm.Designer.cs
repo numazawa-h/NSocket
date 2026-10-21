@@ -1,4 +1,4 @@
-﻿namespace SampleMain
+﻿namespace NSocketSample
 {
     partial class MainForm
     {
