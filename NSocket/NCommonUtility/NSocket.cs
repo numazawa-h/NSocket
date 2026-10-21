@@ -114,8 +114,6 @@ namespace NCommonUtility
         public event SendRecvEventHandler OnRecvEvent;
         public event SendRecvEventHandler OnSendEvent;
 
-        private IAsyncResult _asyncListenResult;
-
         public NSocket()
         {
             _type = 0;
@@ -243,7 +241,7 @@ namespace NCommonUtility
                     _soc = new Socket(_self_EndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
                     _soc.Bind(_self_EndPoint);
                     _soc.Listen(1);     // 一度に一個だけ受け付ける
-                    _asyncListenResult = _soc.BeginAccept(new AsyncCallback(AcceptCallback), this);
+                    _soc.BeginAccept(new AsyncCallback(AcceptCallback), this);
                 }
                 catch (Exception ex)
                 {
