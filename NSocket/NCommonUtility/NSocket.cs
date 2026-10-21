@@ -394,7 +394,7 @@ namespace NCommonUtility
                 socket._soc.EndSend(ar);
                 OnSend(buf);
             }
-            catch (System.ObjectDisposedException ex)
+            catch (Exception ex)
             {
                 OnDisConnect();
                 OnException(new Exception("ソケット送信エラー", ex));
