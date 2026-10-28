@@ -62,7 +62,7 @@ namespace NSocketSample
                 this.Invoke(new SendRecvEventHandler(OnReceive), new object[] { sender, args });
                 return;
             }
-            DisplayLog($"RECV {Encoding.Unicode.GetString(args.dat)}");
+            DisplayLog($"RECV {args.dat.to_text()}");
         }
 
         private void OnSend(object sender, SendRecvEventArgs args)
@@ -72,7 +72,7 @@ namespace NSocketSample
                 this.Invoke(new SendRecvEventHandler(OnSend), new object[] { sender, args });
                 return;
             }
-            DisplayLog($"SEND {Encoding.Unicode.GetString(args.dat)}");
+            DisplayLog($"SEND {args.dat.to_text()}");
         }
 
 
@@ -83,7 +83,7 @@ namespace NSocketSample
 
         private void btn_send_Click(object sender, EventArgs e)
         {
-            _Socket.Send(Encoding.Unicode.GetBytes(txt_sendData.Text));
+            _Socket.Send(new ByteArray(txt_sendData.Text));
         }
     }
 }

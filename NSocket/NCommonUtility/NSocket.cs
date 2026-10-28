@@ -1,6 +1,7 @@
 ﻿using NCommonUtility;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -25,9 +26,9 @@ namespace NCommonUtility
     public class SendRecvEventArgs : EventArgs
     {
         public NSocket socket { get; private set; }
-        public byte[] dat { get; private set; }
+        public ByteArray dat { get; private set; }
 
-        public SendRecvEventArgs(NSocket socket, byte[] dat)
+        public SendRecvEventArgs(NSocket socket, ByteArray dat)
         {
             this.socket = socket;
             this.dat = dat;
@@ -86,10 +87,11 @@ namespace NCommonUtility
         }
         protected Socket _soc = null;
         protected IPEndPoint _self_EndPoint = null;     // バインドするためのEndPoint
-        protected byte[] _recv_buf = new byte[1024];
+        protected ByteArray _RecvBuff = null;
+        private byte[] _recv_buf = null;
+        private int _recv_len = 0;
         public int RecvBuffSize { 
-            get { return _recv_buf.Length; } 
-            set { _recv_buf = new byte[value];  } 
+            get { return _recv_buf.Length; }
         }
 
         public bool isOpen {  get { return _soc != null; } }
@@ -114,14 +116,18 @@ namespace NCommonUtility
         public event SendRecvEventHandler OnRecvEvent;
         public event SendRecvEventHandler OnSendEvent;
 
-        public NSocket()
+        public NSocket(int buff_size= 1024)
         {
+            _recv_buf = new byte[buff_size];
+            _RecvBuff = new ByteArray(_recv_buf);
             _type = 0;
         }
-        protected NSocket(Socket soc)
+        protected NSocket(Socket soc, int buff_size = 1024)
         {
             // Acceptした時に生成されるサーバーソケット
             _soc = soc;
+            _recv_buf = new byte[buff_size];
+            _RecvBuff = new ByteArray(_recv_buf);
             _type = 1;
         }
 
@@ -165,15 +171,122 @@ namespace NCommonUtility
             StartRecvThread();
         }
 
-        protected virtual void OnRecv()
+        /// <summary>
+        /// 指定されたバッファにSocketから受信
+        /// </summary>
+        /// <param name="rbuff">受信バッファ</param>
+        /// <param name="rsize">受信サイズ</param>
+        /// <returns>実際に受信したサイズ</returns>
+        /// <exception cref="EndOfStreamException"></exception>
+        protected int Receive(byte[] rbuff, int rsize)
         {
-            int len =_soc.Receive(_recv_buf);
-            byte[] buf = new byte[len];
-            Buffer.BlockCopy(_recv_buf, 0, buf, 0, len);
-            OnRecvEvent?.Invoke(this, new SendRecvEventArgs(this, buf));
+            int rcnt = _soc.Receive(rbuff, _recv_len, rsize - _recv_len, SocketFlags.None);
+            if (rcnt == 0)
+            {
+                throw new EndOfStreamException("データをすべて受信する前に、相手側が接続を閉じました。");
+            }
+            return rcnt;
         }
 
-        protected virtual void OnSend(byte[] buf)
+        /// <summary>
+        /// 受信時の処理
+        /// </summary>
+        /// <remarks>受信スレッドのループから呼ばれる</remarks>
+        /// <exception cref="OverflowException">受信バッファオーバーフロー</exception>
+        protected virtual void OnRecv()
+        {
+            // _recv_bufに受信
+            int rcnt = Receive(_recv_buf, _recv_buf.Length);
+            _recv_len += rcnt;
+
+            // 受信部分を解析してレコード長を取得
+            int rsize = GetRecordLength(_RecvBuff, _recv_len);
+            while (rsize != 0)
+            {
+                if (rsize < 0)
+                {
+                    // マイナスなら読み捨て
+                    rsize = -rsize;
+                    _RecvBuff.ShiftLeft(rsize);
+                    _recv_len -= rsize;
+                    if (_recv_len < 0)
+                    {
+                        _recv_len = 0;
+                    }
+                }
+                else if (rsize > 0)
+                {
+                    // プラスなら1電文切り出し
+                    ByteArray rec = GetOneRecv(rsize);
+                    OnRecvEvent?.Invoke(this, new SendRecvEventArgs(this, rec));
+                }
+                // 残りの部分を解析
+                rsize = GetRecordLength(_RecvBuff, _recv_len);
+            }
+            // rsizeが 0 なのに_recv_bufが一杯になったら例外(コンストラクタで十分な大きさを確保しておくこと)
+            if (_recv_len >= _recv_buf.Length)
+            {
+                throw new OverflowException("受信バッファオーバーフロー");
+            }
+            // rsizeが 0 なら次の受信を待って_recv_bufに追加
+        }
+
+        /// <summary>
+        /// レコード１件取得
+        /// </summary>
+        /// <remarks>受信バッファからレコードを１件取得する。まだ受信してない分は返却用のデータに直接受信する。</remarks>
+        /// <param name="rsize">GetRecordLength() で判定したレコード長</param>
+        /// <returns>1件分のレコードデータ</returns>
+        private ByteArray GetOneRecv(int rsize)
+        {
+            // レコード長のバッファ確保
+            byte[] rbuff = new byte[rsize];
+            ByteArray rec = new ByteArray(rbuff);
+
+            if (rsize > _recv_len)
+            {
+                // 追加の読み込みが必要ならコピーして残りをReceive()
+                rec.Copy(_recv_buf, 0, _recv_len);
+                while (rsize > _recv_len)
+                {
+                    int rcnt = Receive(rbuff, rsize);   // Receive()内でも_recv_lenを使う
+                    _recv_len += rcnt;
+                }
+                // _recv_bufは既に全て取得済なので戻しておく
+                _recv_len = 0;
+            }
+            else
+            {
+                // 全レコードが読み込み済ならばコピーしてシフト
+                rec.Copy(_recv_buf, 0, rsize);
+                _RecvBuff.ShiftLeft(rsize);
+                _recv_len -= rsize;
+            }
+            return rec;
+        }
+
+        /// <summary>
+        /// レコード長取得
+        /// </summary>
+        /// <remarks>
+        /// 継承クラスで再定義することを前提としている。
+        /// 例えば、ヘッダにデータ長があるのなら、ヘッダを読み込んだ時点でデータ長を返却する。
+        /// ヘッダがまだ読み足りていなければ、0を返却する。
+        /// 改行などのターミネーターでレコードを区切るのならば改行を検索して改行までの長さを返却する。
+        /// 改行がみつからなければ、0を返却する。
+        /// 先頭に特別な識別コードが必要ならば、該当の識別コードより前の長さをマイナスで返却すれば読み飛ばす、
+        /// (次回に呼ばれた時、該当の識別コードから始まる状態で呼ばれる)
+        /// </remarks>
+        /// <param name="buff">受信バッファ</param>
+        /// <param name="cnt">受信サイズ</param>
+        /// <returns>判定したレコード長(マイナスの時は読み飛ばし、判定できなければ 0を返却)</returns>
+        protected virtual int GetRecordLength(ByteArray buff, int cnt)
+        {
+            // デフォルトは受信した全部を１レコードとする
+            return cnt;
+        }
+
+        protected virtual void OnSend(ByteArray buf)
         {
             OnSendEvent?.Invoke(this, new SendRecvEventArgs(this, buf));
         }
@@ -368,12 +481,13 @@ namespace NCommonUtility
 
         public void Send(byte[] dat)
         {
+            Send(new ByteArray(dat));
+        }
+        public void Send(ByteArray dat)
+        {
             try
             {
-                byte[] buf = new byte[dat.Length];
-                Buffer.BlockCopy(dat, 0, buf, 0, dat.Length);
-
-                _soc?.BeginSend(buf, 0, buf.Length, SocketFlags.None, new AsyncCallback(SendCallback), (this, buf));
+                _soc?.BeginSend(dat.GetData(), 0, dat.Length(), SocketFlags.None, new AsyncCallback(SendCallback), (this, dat));
             }
             catch (Exception e)
             {
@@ -384,7 +498,7 @@ namespace NCommonUtility
 
         protected virtual void SendCallback(IAsyncResult ar)
         {
-            var (socket, buf) = ((NSocket, byte[]))ar.AsyncState;
+            var (socket, dat) = ((NSocket, ByteArray))ar.AsyncState;
             if (socket._soc == null)
             {
                 return;
@@ -392,7 +506,7 @@ namespace NCommonUtility
             try
             {
                 socket._soc.EndSend(ar);
-                OnSend(buf);
+                OnSend(dat);
             }
             catch (Exception ex)
             {
