@@ -72,7 +72,7 @@ namespace NSocketSample
                 this.Invoke(new SendRecvEventHandler(OnSend), new object[] { sender, args });
                 return;
             }
-            DisplayLog($"RECV {Encoding.Unicode.GetString(args.dat)}");
+            DisplayLog($"SEND {Encoding.Unicode.GetString(args.dat)}");
         }
 
 
