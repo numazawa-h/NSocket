@@ -32,7 +32,7 @@
             this.btn_connect = new System.Windows.Forms.Button();
             this.txt_log = new System.Windows.Forms.TextBox();
             this.panel1 = new System.Windows.Forms.Panel();
-            this.panel2 = new System.Windows.Forms.Panel();
+            this.btn_stopListen = new System.Windows.Forms.Button();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.txt_ipAddr1 = new System.Windows.Forms.TextBox();
             this.txt_portNo1 = new System.Windows.Forms.TextBox();
@@ -43,11 +43,11 @@
             this.txt_portNo2 = new System.Windows.Forms.TextBox();
             this.label3 = new System.Windows.Forms.Label();
             this.label4 = new System.Windows.Forms.Label();
-            this.btn_stopListen = new System.Windows.Forms.Button();
+            this.panel2 = new System.Windows.Forms.Panel();
             this.panel1.SuspendLayout();
-            this.panel2.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
+            this.panel2.SuspendLayout();
             this.SuspendLayout();
             // 
             // btn_listen
@@ -93,14 +93,15 @@
             this.panel1.Size = new System.Drawing.Size(800, 151);
             this.panel1.TabIndex = 7;
             // 
-            // panel2
+            // btn_stopListen
             // 
-            this.panel2.Controls.Add(this.txt_log);
-            this.panel2.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.panel2.Location = new System.Drawing.Point(0, 151);
-            this.panel2.Name = "panel2";
-            this.panel2.Size = new System.Drawing.Size(800, 470);
-            this.panel2.TabIndex = 8;
+            this.btn_stopListen.Location = new System.Drawing.Point(242, 100);
+            this.btn_stopListen.Name = "btn_stopListen";
+            this.btn_stopListen.Size = new System.Drawing.Size(147, 38);
+            this.btn_stopListen.TabIndex = 10;
+            this.btn_stopListen.Text = "stop listen";
+            this.btn_stopListen.UseVisualStyleBackColor = true;
+            this.btn_stopListen.Click += new System.EventHandler(this.btn_stopListen_Click);
             // 
             // groupBox1
             // 
@@ -121,7 +122,7 @@
             this.txt_ipAddr1.Name = "txt_ipAddr1";
             this.txt_ipAddr1.Size = new System.Drawing.Size(165, 31);
             this.txt_ipAddr1.TabIndex = 2;
-            this.txt_ipAddr1.Text = "192.168.179.2";
+            this.txt_ipAddr1.Text = "localhost";
             // 
             // txt_portNo1
             // 
@@ -167,7 +168,7 @@
             this.txt_ipAddr2.Name = "txt_ipAddr2";
             this.txt_ipAddr2.Size = new System.Drawing.Size(165, 31);
             this.txt_ipAddr2.TabIndex = 2;
-            this.txt_ipAddr2.Text = "192.168.179.2";
+            this.txt_ipAddr2.Text = "localhost";
             // 
             // txt_portNo2
             // 
@@ -194,15 +195,14 @@
             this.label4.TabIndex = 1;
             this.label4.Text = "port";
             // 
-            // btn_stopListen
+            // panel2
             // 
-            this.btn_stopListen.Location = new System.Drawing.Point(242, 100);
-            this.btn_stopListen.Name = "btn_stopListen";
-            this.btn_stopListen.Size = new System.Drawing.Size(147, 38);
-            this.btn_stopListen.TabIndex = 10;
-            this.btn_stopListen.Text = "stop listen";
-            this.btn_stopListen.UseVisualStyleBackColor = true;
-            this.btn_stopListen.Click += new System.EventHandler(this.btn_stopListen_Click);
+            this.panel2.Controls.Add(this.txt_log);
+            this.panel2.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.panel2.Location = new System.Drawing.Point(0, 151);
+            this.panel2.Name = "panel2";
+            this.panel2.Size = new System.Drawing.Size(800, 470);
+            this.panel2.TabIndex = 8;
             // 
             // MainForm
             // 
@@ -214,12 +214,12 @@
             this.Name = "MainForm";
             this.Text = "Form1";
             this.panel1.ResumeLayout(false);
-            this.panel2.ResumeLayout(false);
-            this.panel2.PerformLayout();
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
             this.groupBox2.ResumeLayout(false);
             this.groupBox2.PerformLayout();
+            this.panel2.ResumeLayout(false);
+            this.panel2.PerformLayout();
             this.ResumeLayout(false);
 
         }
